@@ -102,6 +102,17 @@ fun LoginScreen(
                 showToastMessage(context, it.errorMessage)
             }
         }
+
+        effectFlow?.collect{
+            when(it){
+                is BaseContract.Effect.DataWasLoaded -> {
+
+                }
+                is BaseContract.Effect.Error -> {
+
+                }
+            }
+        }
     }
 
     if (state.isLoading) {

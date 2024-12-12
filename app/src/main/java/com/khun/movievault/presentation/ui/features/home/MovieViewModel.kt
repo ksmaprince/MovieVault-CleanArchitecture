@@ -25,7 +25,7 @@ class MovieViewModel @Inject constructor(private val getAllMoviesUseCase: GetAll
     private val _movieState = MutableStateFlow(
         MovieContract.State(
             movies = listOf(),
-            isLoading = false
+            isLoading = false,
         )
     )
     val movieState: StateFlow<MovieContract.State> get() = _movieState
