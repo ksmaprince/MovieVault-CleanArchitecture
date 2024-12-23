@@ -94,6 +94,9 @@ This layered structure simplifies development and testing, making the applicatio
 
 ## **Backend Project (MovieVault Webservice App)**
 
-The backend Restful Webservice Project is developed by using **Spring Boot** for backend development, **Spring Security** for user authentication, and **Spring Data JPA** for data persistence. Furthermore, the project will implement _**MySQL**_ as the backend database, providing a structured foundation for seamless data management.
-The sample project can be see on the Github [here](https://github.com/ksmaprince/MovieValut-WebServices).
+The backend API for this project is built using **Spring Boot**, with **Spring Security** handling user authentication and **Spring Data JPA** managing data persistence. Additionally, **MySQL** is utilized as the database to ensure efficient and structured data management. You can view the sample project on GitHub [here](https://github.com/ksmaprince/MovieValut-WebServices).
+
+
+### Designed and Developed By [KHUN AUNG](https://www.khunaung.me/).
+
 
