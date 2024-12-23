@@ -1,5 +1,15 @@
 # **Movie-Vault (Movie Collection System)**
 
+![MinAPI](https://badgen.net/badge/MinAPI/24/silver/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.0-yellow.svg?logo=kotlin)](http://kotlinlang.org)
+[![Junit](https://img.shields.io/badge/junit-4.13.2-pink.svg??logo=junit4)](https://developer.android.com/training/testing/instrumented-tests/androidx-test-libraries/rules)
+[![Gradle](https://img.shields.io/badge/gradle-8.7.3-gold.svg??logo=gradle)](https://lv.binarybabel.org/catalog/gradle/latest)
+[![Compose](https://img.shields.io/badge/compose-1.9.3-green.svg?logo=JetpackCompose)](https://developer.android.com/jetpack/compose)
+[![Retrofit](https://badgen.net/badge/Retrofit/2.11.0/red/)](https://square.github.io/retrofit/)
+[![GlideCompose](https://img.shields.io/badge/GlideCompose-1.0.0-green.svg?logo=JetpackCompose)](https://bumptech.github.io/glide/int/compose.html)
+[![HILT](https://img.shields.io/badge/HILT-2.52-blue.svg?logo=hilt)](https://developer.android.com/training/dependency-injection/hilt-android)
+
+
 **Project Title:** Movie-Vault (Movie Collection System)
 
 A native android app developed with Jetpack Compose technology. The application facilitates user interactions such as registration, login, browsing movie collections, viewing movie trailers, and saving favorites. It is seamlessly integrated with a RESTful backend web service.
@@ -11,7 +21,7 @@ A native android app developed with Jetpack Compose technology. The application 
 * LiveData and MVVM for data management and architecture
 * Kotlin programming language
 
-## Some features and UI Flow
+## App Features
 
 ### **Login & Create User Account**
 
@@ -36,7 +46,7 @@ A native android app developed with Jetpack Compose technology. The application 
 
 ![img.png](images/profile_edit_pwd.png)
 
-# About the Project
+## About the Project
 
 <b>MovieVault-Clean</b> is a sample project showcasing a modern approach to Android app development. It integrates widely-used Android tools and demonstrates best practices by leveraging a cutting-edge tech stack, including Jetpack Compose, Kotlin Flow, and Hilt.
 
@@ -44,7 +54,7 @@ A native android app developed with Jetpack Compose technology. The application 
 
 - [Kotlin](https://kotlinlang.org/) 100% coverage
 
-- [Compose](https://developer.android.com/jetpack/compose)
+- [Jetpack Compose](https://developer.android.com/jetpack/compose)
     - [Material](https://developer.android.com/jetpack/androidx/releases/compose-material) - Build
       Jetpack Compose UIs with ready to use Material Design Components.
     - [Foundation](https://developer.android.com/jetpack/androidx/releases/compose-foundation) - Write
@@ -53,16 +63,14 @@ A native android app developed with Jetpack Compose technology. The application 
     - [UI](https://developer.android.com/jetpack/androidx/releases/compose-ui) - Fundamental
       components of compose UI needed to interact with the device, including layout, drawing, and input.
     - [Glide](https://bumptech.github.io/glide/int/compose.html) - A fast and efficient image
-      loading library for Android focused on smooth scrolling (Google).
+      loading library for Android focused on smooth scrolling.
 
 - Dependency Injection (DI)
     - [HILT](https://developer.android.com/training/dependency-injection/hilt-android) is used for Dependency Injection as a wrapper on top of [Dagger](https://github.com/google/dagger).
 
-      Most of the dependencies are injected with `@Singleton` scope and are provided within the `FoodMenuApiProvider` module.
+      Most of the dependencies are injected with `@Singleton` scope and are provided within the `NetworkModule.kt`
 
-      For ViewModels, we use the out-of-the-box `@HiltViewModel` annotation that injects them with the scope of the navigation graph composables that represent the screens.
-      -You can also use [Koin](https://insert-koin.io/docs/quickstart/android/) -Koin provides a easy and efficient
-      way to incorporate dependency injection into any Kotlin application.
+      For ViewModels, we use the out-of-the-box `@HiltViewModel` annotation.
 
 - Others
     - [Retrofit](https://square.github.io/retrofit/)  for networking
@@ -75,7 +83,7 @@ A native android app developed with Jetpack Compose technology. The application 
     - [Coroutines](https://github.com/Kotlin/kotlinx.coroutines) - Library Support for
       coroutines,provides runBlocking coroutine builder used in tests.
     - [Gson](https://github.com/google/gson) - A modern JSON library for Kotlin and Java.
-    
+
 - Youtube Player (android-youtube-player) 
     - [Youtube Player (android-youtube-player)](https://pierfrancescosoffritti.github.io/android-youtube-player/) is a stable and customizable open source YouTube player for Android. It provides a simple View that can be easily integrated in every Activity/Fragment.
 
@@ -97,6 +105,6 @@ This layered structure simplifies development and testing, making the applicatio
 The backend API for this project is built using **Spring Boot**, with **Spring Security** handling user authentication and **Spring Data JPA** managing data persistence. Additionally, **MySQL** is utilized as the database to ensure efficient and structured data management. You can view the sample project on GitHub [here](https://github.com/ksmaprince/MovieValut-WebServices).
 
 
-### Designed and Developed By [KHUN AUNG](https://www.khunaung.me/).
+#### Designed and Developed By [KHUN AUNG](https://www.khunaung.me/).
 
 
