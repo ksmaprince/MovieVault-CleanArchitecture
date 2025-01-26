@@ -1,22 +1,22 @@
 package com.khun.movievault.presentation.ui.features.home
 
 import android.app.Activity
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,46 +26,45 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.khun.movievault.data.model.Movie
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.MovieContract
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.domain.mappers.Movies
+import com.khun.movievault.domain.mappers.toMovieUrl
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    state: MovieContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
-    onMovieClick: (movie: Movie) -> Unit
+    homeScreenViewModel: MovieViewModel,
+    onMovieClick: () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var firstBackPressed by remember {
         mutableStateOf(false)
     }
-
-    if (state.isLoading) {
-        ShowLoadingDialog(message = "Fetching data ...") {
-
-        }
+    val homeScreenUISate by homeScreenViewModel.homeScreenUISate.collectAsStateWithLifecycle()
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+    var movies by remember {
+        mutableStateOf<Movies>(listOf())
     }
 
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                //showToastMessage(context, "Movies loaded")
-                Log.i("Data Loaded", "Home")
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
+    when (val currentState = homeScreenUISate) {
+        is HomeScreenUISate.Loading -> isLoading = true
+        is HomeScreenUISate.Ready -> {
+            isLoading = false
+            movies = currentState.movies
+        }
+
+        is HomeScreenUISate.Error -> {
+            isLoading = false
+            showToastMessage(context = context, message = currentState.message)
         }
     }
 
@@ -73,16 +72,23 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(15.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(15.dp)
+        ) {
             HomeScreenItem(
-                state = state,
-                onMovieClick = onMovieClick
+                movies = movies,
+                onMovieClick = {
+                    homeScreenViewModel.setMovieInfo(it)
+                    onMovieClick()
+                }
             )
             Text("Home Screen")
         }
+        if (isLoading) ShowLoading()
     }
+
     BackHandler {
         if (firstBackPressed) {
             val activity = context as Activity
@@ -100,7 +106,7 @@ fun HomeScreen(
 
 @Composable
 fun HomeScreenItem(
-    state: MovieContract.State,
+    movies: Movies,
     onMovieClick: (movie: Movie) -> Unit
 ) {
 
@@ -109,7 +115,7 @@ fun HomeScreenItem(
             columns = GridCells.Fixed(2),
             Modifier.padding(4.dp)
         ) {
-            items(state.movies) {
+            items(movies) {
                 MovieItem(
                     movie = it,
                     onMovieClick = onMovieClick
@@ -119,7 +125,6 @@ fun HomeScreenItem(
     }
 }
 
-@OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun MovieItem(movie: Movie, onMovieClick: (movie: Movie) -> Unit) {
     Card(
@@ -128,12 +133,19 @@ fun MovieItem(movie: Movie, onMovieClick: (movie: Movie) -> Unit) {
             .padding(4.dp),
         onClick = { onMovieClick(movie) }
     ) {
-        GlideImage(
-            model = "https://image.tmdb.org/t/p/w500${movie.poster}",
-            contentDescription = "Poster",
-            Modifier.fillMaxWidth(),
+        SubcomposeAsyncImage(
+            modifier = Modifier.fillMaxWidth(),
+            model = ImageRequest.Builder(LocalContext.current)
+                .crossfade(true)
+                .data(movie.poster.toMovieUrl())
+                .build(),
+            loading = {
+                CircularProgressIndicator(modifier = Modifier.requiredSize(24.dp))
+            },
+            contentDescription = movie.movieTitle,
             contentScale = ContentScale.Crop
         )
+
         Column(
             Modifier
                 .fillMaxWidth()
@@ -147,3 +159,4 @@ fun MovieItem(movie: Movie, onMovieClick: (movie: Movie) -> Unit) {
         }
     }
 }
+

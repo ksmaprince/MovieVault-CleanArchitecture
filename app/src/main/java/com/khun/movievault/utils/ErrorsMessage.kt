@@ -7,3 +7,4 @@ class ErrorsMessage {
         const val sessionExpiredError = "Session Expired, please try again"
     }
 }
+

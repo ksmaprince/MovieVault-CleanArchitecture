@@ -21,12 +21,12 @@ class HeaderInterceptor(private val token: String) : Interceptor {
             mutableHeaders["Content-Type"] = "application/json"
         }
 
-        if (!mutableHeaders.containsKey("x-api-key")) {
-            mutableHeaders["x-api-key"] = "DEMO-API-KEY"
-        }
+//        if (!mutableHeaders.containsKey("x-api-key")) {
+//            mutableHeaders["x-api-key"] = "DEMO-API-KEY"
+//        }
 
-        if (!mutableHeaders.containsKey("Authorization")) {
-            mutableHeaders["Authorization"] = if (loginToken == "") "" else "Bearer $loginToken"
+        if (!mutableHeaders.containsKey("Authorization") && token.isNotBlank()) {
+            mutableHeaders["Authorization"] = "Bearer $loginToken"
         }
 
         val headerBuilder: Headers.Builder = Headers.Builder()

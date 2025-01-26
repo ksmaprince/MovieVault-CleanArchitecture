@@ -5,5 +5,5 @@ data class Profile(
     val fullName: String = "",
     val contactNo: String = "",
     //Default Profile Image Holder
-    val imageUrl: String = ""
+    val imageUrl: String? = null
 )

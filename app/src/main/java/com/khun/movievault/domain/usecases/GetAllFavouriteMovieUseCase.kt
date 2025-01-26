@@ -5,5 +5,5 @@ import com.khun.movievault.data.DataResult
 import kotlinx.coroutines.flow.Flow
 
 interface GetAllFavouriteMovieUseCase {
-    suspend fun execute(profileId: Long): Flow<DataResult<List<Movie>>>
+    fun execute(profileId: Long): Flow<DataResult<List<Movie>>>
 }

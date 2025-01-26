@@ -1,7 +1,6 @@
 package com.khun.movievault.presentation.ui.features.login
 
 import android.app.Activity
-import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -27,9 +26,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,33 +50,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khun.movievault.R
 import com.khun.movievault.data.model.UserLoginRequest
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.LoginContract
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
-import com.khun.movievault.presentation.ui.components.nav.Destinations
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
 import com.khun.movievault.presentation.ui.supportWideScreen
-import com.khun.movievault.presentation.ui.theme.MovieVaultCleanTheme
 import com.khun.movievault.presentation.ui.theme.stronglyDeemphasizedAlpha
 import com.khun.movievault.utils.SecretKey
 import com.khun.movievault.utils.encryptPassword
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    state: LoginContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
-    navController: NavController,
-    navigateToHome: () -> Unit,
-    onLoginSubmit: (userLoginRequest: UserLoginRequest) -> Unit,
+    loginViewModel: LoginViewModel = hiltViewModel(),
+    onClickRegister: () -> Unit,
+    navigateToHome: () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -88,35 +76,30 @@ fun LoginScreen(
         mutableStateOf(false)
     }
 
+    val loginScreenUIState by loginViewModel.loginScreenUIState.collectAsStateWithLifecycle()
+
     val showBranding by remember {
         mutableStateOf(true)
     }
 
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                navigateToHome()
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
-        }
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
 
-        effectFlow?.collect{
-            when(it){
-                is BaseContract.Effect.DataWasLoaded -> {
-
-                }
-                is BaseContract.Effect.Error -> {
-
-                }
-            }
+    LaunchedEffect(loginScreenUIState) {
+        if (loginScreenUIState is LoginScreenUIState.LoginSuccess) {
+            navigateToHome()
         }
     }
 
-    if (state.isLoading) {
-        ShowLoadingDialog("Fetch Userdata ...") { }
+    when (val currentState = loginScreenUIState) {
+        is LoginScreenUIState.Loading -> isLoading = true
+        is LoginScreenUIState.Error -> {
+            isLoading = false
+            showToastMessage(context = context, message = currentState.message)
+        }
+
+        else -> isLoading = false
     }
 
     Scaffold(
@@ -136,17 +119,18 @@ fun LoginScreen(
                 Branding()
             }
 
-            LoginRegister(state, onLoginSubmit)
+            LoginRegister { userLoginRequest ->
+                loginViewModel.login(userLoginRequest)
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(
-                onClick = {
-                    navController.navigate(Destinations.REGISTER_ROUTE)
-                },
+                onClick = onClickRegister,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = "New user? Register Now.")
             }
+            if (isLoading) ShowLoading()
         }
     }
     BackHandler {
@@ -204,7 +188,6 @@ fun Logo(
 
 @Composable
 fun LoginRegister(
-    state: LoginContract.State,
     onLoginSubmit: (userLoginRequest: UserLoginRequest) -> Unit
 ) {
 
@@ -231,10 +214,6 @@ fun LoginRegister(
 
         val passwordState = remember { PasswordState() }
 
-        var errorMessage by remember {
-            mutableStateOf("")
-        }
-
         val onSubmit = {
             if (emailState.isValid && passwordState.isValid) {
                 val email = emailState.text
@@ -259,13 +238,6 @@ fun LoginRegister(
             Text(
                 text = stringResource(id = R.string.login)
             )
-        }
-
-
-        if (state.isLoading) {
-            ShowLoadingDialog(message = "Logging in ...") {
-                // Do Something
-            }
         }
     }
 
@@ -391,52 +363,5 @@ fun TextFieldError(textError: String) {
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.error
         )
-    }
-}
-
-@Composable
-fun ErrorSnackbar(
-    snackbarHostState: SnackbarHostState,
-    modifier: Modifier = Modifier,
-    onDismiss: () -> Unit = { }
-) {
-    SnackbarHost(
-        hostState = snackbarHostState,
-        snackbar = { data ->
-            Snackbar(
-                modifier = Modifier.padding(16.dp),
-                content = {
-                    Text(
-                        text = data.visuals.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-                action = {
-                    data.visuals.actionLabel?.let {
-                        TextButton(onClick = onDismiss) {
-                            Text(
-                                text = stringResource(R.string.dismiss),
-                                color = MaterialTheme.colorScheme.inversePrimary
-                            )
-                        }
-                    }
-                }
-            )
-        },
-        modifier = modifier
-            .fillMaxWidth()
-            .wrapContentHeight(Alignment.Bottom)
-    )
-}
-
-@Preview(name = "Login light theme", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Preview(name = "Login dark theme", uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Composable
-fun LoginScreenPreveiw() {
-    MovieVaultCleanTheme {
-//        LoginScreen(
-//            onLoginSubmitted = { _, _ -> },
-//            onNewUser = { -> },
-//        )
     }
 }

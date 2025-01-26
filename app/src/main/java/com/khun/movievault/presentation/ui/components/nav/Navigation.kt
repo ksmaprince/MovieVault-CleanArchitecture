@@ -2,7 +2,6 @@ package com.khun.movievault.presentation.ui.components.nav
 
 import android.annotation.SuppressLint
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,7 +11,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,23 +26,17 @@ import com.khun.movievault.presentation.ui.components.nav.Destinations.MOVIE_DET
 import com.khun.movievault.presentation.ui.components.nav.Destinations.PASSWORD_EDIT_ROUTE
 import com.khun.movievault.presentation.ui.components.nav.Destinations.PROFILE_EDIT_ROUTE
 import com.khun.movievault.presentation.ui.components.nav.Destinations.REGISTER_ROUTE
-import com.khun.movievault.presentation.ui.features.favourites.FavouriteMovieViewModel
 import com.khun.movievault.presentation.ui.features.favourites.FavouriteMoviesScreen
 import com.khun.movievault.presentation.ui.features.home.HomeScreen
 import com.khun.movievault.presentation.ui.features.home.MovieViewModel
 import com.khun.movievault.presentation.ui.features.login.LoginScreen
-import com.khun.movievault.presentation.ui.features.login.LoginViewModel
 import com.khun.movievault.presentation.ui.features.movie.MovieDetailScreen
-import com.khun.movievault.presentation.ui.features.movie.MovieDetailViewModel
 import com.khun.movievault.presentation.ui.features.profile.ChangePasswordScreen
 import com.khun.movievault.presentation.ui.features.profile.EditProfileScreen
-import com.khun.movievault.presentation.ui.features.profile.EditProfileViewModel
 import com.khun.movievault.presentation.ui.features.profile.ProfileScreen
 import com.khun.movievault.presentation.ui.features.profile.ProfileViewModel
 import com.khun.movievault.presentation.ui.features.register.RegisterScreen
-import com.khun.movievault.presentation.ui.features.register.RegisterViewModel
 import com.khun.movievault.presentation.ui.features.search.SearchScreen
-import kotlinx.coroutines.flow.receiveAsFlow
 
 object Destinations {
     const val APP_MAIN_ROUTE = "main"
@@ -60,8 +52,6 @@ object Destinations {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MovieVaultNavHost(
-    loginViewModel: LoginViewModel = hiltViewModel(),
-    registerViewModel: RegisterViewModel = hiltViewModel(),
     navController: NavHostController = rememberNavController(),
     onLogout: () -> Unit
 ) {
@@ -69,23 +59,16 @@ fun MovieVaultNavHost(
     NavHost(navController = navController, startDestination = LOGIN_ROUTE) {
         composable(LOGIN_ROUTE) {
             LoginScreen(
-                state = loginViewModel.loginState.collectAsState().value,
-                effectFlow = loginViewModel.effects.receiveAsFlow(),
-                navController = navController,
-                navigateToHome = {
-                    navController.navigate(APP_MAIN_ROUTE)
-                },
-            ) { userLoginRequest ->
-                loginViewModel.login(userLoginRequest = userLoginRequest)
+                onClickRegister = {
+                    navController.navigate(REGISTER_ROUTE)
+                }
+            ) {
+                navController.navigate(APP_MAIN_ROUTE)
             }
         }
         composable(REGISTER_ROUTE) {
-            RegisterScreen(
-                state = registerViewModel.registerUserState.collectAsState().value,
-                effectFlow = registerViewModel.effects.receiveAsFlow(),
-                navController = navController
-            ) { user ->
-                registerViewModel.registerUser(user)
+            RegisterScreen {
+                navController.popBackStack()
             }
         }
         composable(APP_MAIN_ROUTE) {
@@ -100,12 +83,9 @@ fun MovieVaultNavHost(
 @SuppressLint("NewApi")
 @Composable
 fun BottomNavigationBar(
-    navController: NavHostController = rememberNavController(),
     movieViewModel: MovieViewModel = hiltViewModel(),
-    movieDetailViewModel: MovieDetailViewModel = hiltViewModel(),
-    favouriteMovieViewModel: FavouriteMovieViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel(),
-    editProfileViewModel: EditProfileViewModel = hiltViewModel(),
+    navController: NavHostController = rememberNavController(),
     onLogout: () -> Unit
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -148,91 +128,52 @@ fun BottomNavigationBar(
         ) {
 
             composable(NavItem.Home.path) {
-                HomeScreen(
-                    state = movieViewModel.movieState.collectAsState().value,
-                    effectFlow = movieViewModel.effects.receiveAsFlow(),
-                ) { movie ->
-                    movieViewModel.setMovieInfo(movie)
+                HomeScreen(homeScreenViewModel = movieViewModel) {
                     navController.navigate(MOVIE_DETAIL_ROUTE)
                 }
             }
 
             composable(NavItem.Search.path) {
-                SearchScreen(
-                    movieViewModel = movieViewModel,
-                    navController
-                )
+                SearchScreen(movieViewModel = movieViewModel) {
+                    navController.navigate(MOVIE_DETAIL_ROUTE)
+                }
             }
 
             composable(NavItem.List.path) {
-                FavouriteMoviesScreen(
-                    state = favouriteMovieViewModel.state.collectAsState().value,
-                    effectFlow = favouriteMovieViewModel.effects.receiveAsFlow(),
-                    navController = navController
-                )
+                FavouriteMoviesScreen()
             }
 
             composable(NavItem.Profile.path) {
                 ProfileScreen(
-                    state = profileViewModel.profileState.collectAsState().value,
-                    effectFlow = profileViewModel.effects.receiveAsFlow(),
-                    onUploadImage = { file ->
-                        profileViewModel.uploadeImage(file)
-                    },
-                    onNavigateToEditProfile = { userProfile ->
+                    profileViewModel = profileViewModel,
+                    onNavigateToEditProfile = {
                         navController.navigate(PROFILE_EDIT_ROUTE)
-                        userProfile?.let {
-                            profileViewModel.setProfile(userProfile)
-                        }
                     },
                     onNavigateToEditPassword = {
                         navController.navigate(PASSWORD_EDIT_ROUTE)
-                    },
-                    onLogoutSubmit = {
-                        profileViewModel.logoutCurrentUser()
                     },
                     onLogoutSuccess = onLogout
                 )
             }
 
             composable(MOVIE_DETAIL_ROUTE) {
-                MovieDetailScreen(
-                    state = movieDetailViewModel.state.collectAsState().value,
-                    effectFlow = movieDetailViewModel.effects.receiveAsFlow(),
-                    movie = movieViewModel.movie.value!!,
-                    navController = navController,
-                    onAddFavourite = { movieId ->
-                        movieDetailViewModel.addFavoriteMovie(movieId = movieId)
-                    },
-                    onFavouriteAdded = {
-                        favouriteMovieViewModel.fetchAllFavouriteMovies()
-                    })
+                movieViewModel.movie?.let {
+                    MovieDetailScreen(movie = it) {
+                        navController.popBackStack()
+                    }
+                }
             }
 
             composable(PROFILE_EDIT_ROUTE) {
-                EditProfileScreen(
-                    state = editProfileViewModel.editProfileState.collectAsState().value,
-                    effectFlow = editProfileViewModel.effects.receiveAsFlow(),
-                    navController = navController,
-                    profile = profileViewModel.profile.value!!,
-                    onSubmit = { profile ->
-                        editProfileViewModel.updateUserProfile(profile)
-                    },
-                    onProfileUpdated = {
-                        profileViewModel.getUserProfile()
-                    })
+                EditProfileScreen(profile = profileViewModel.profile.value!!) {
+                    navController.popBackStack()
+                }
             }
 
             composable(PASSWORD_EDIT_ROUTE) {
-                ChangePasswordScreen(
-                    state = editProfileViewModel.editProfileState.collectAsState().value,
-                    effectFlow = editProfileViewModel.effects.receiveAsFlow(),
-                    navController = navController,
-                    onSubmit = { currentPassword, newPassword ->
-                        editProfileViewModel.updatePassword(currentPassword, newPassword)
-                    },
-                    onChangePasswordSuccess = onLogout
-                )
+                ChangePasswordScreen {
+                    navController.popBackStack()
+                }
             }
         }
     }

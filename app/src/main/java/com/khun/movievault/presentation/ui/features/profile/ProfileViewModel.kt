@@ -1,7 +1,6 @@
 package com.khun.movievault.presentation.ui.features.profile
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -9,7 +8,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.khun.movievault.data.DataResult
 import com.khun.movievault.data.model.Profile
-import com.khun.movievault.domain.mappers.CallSuccessModel
 import com.khun.movievault.domain.usecases.GetProfileByIdUseCase
 import com.khun.movievault.domain.usecases.UpdateProfileImageUseCase
 import com.khun.movievault.domain.usecases.UserLogoutUseCase
@@ -37,53 +35,43 @@ class ProfileViewModel @Inject constructor(
     private val userLogoutUseCase: UserLogoutUseCase
 ) :
     ViewModel() {
-    private val _profileState = MutableStateFlow(
-        UserProfileContract.State(
-            userProfile = null,
-            updateImage = null,
-            isLogout = false,
-            logoutSuccessMessage = "",
-            isLoading = false
-        )
+
+//    private val _profileState = MutableStateFlow(
+//        UserProfileContract.State(
+//            userProfile = null,
+//            updateImage = null,
+//            isLogout = false,
+//            logoutSuccessMessage = "",
+//            isLoading = false
+//        )
+//    )
+//    val profileState: StateFlow<UserProfileContract.State> get() = _profileState
+//    var effects = Channel<BaseContract.Effect>(Channel.UNLIMITED)
+
+    private var _profileUiState = MutableStateFlow<ProfileUiState>(
+        ProfileUiState.Loading
     )
-    val profileState: StateFlow<UserProfileContract.State> get() = _profileState
-    var effects = Channel<BaseContract.Effect>(Channel.UNLIMITED)
+    val profileUiState get() = _profileUiState
 
     init {
         getUserProfile()
     }
 
     fun getUserProfile() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             getProfileByIdUseCase.execute(userProfileId).collect {
                 when (it) {
                     is DataResult.Success -> {
-                        _profileState.value = profileState.value.copy(
-                            userProfile = it.data,
-                            isLoading = false
-                        )
-                        effects.send(BaseContract.Effect.DataWasLoaded)
+                        if (it.data != null)
+                            _profileUiState.value = ProfileUiState.LoadProfileSuccess(it.data)
+                        else _profileUiState.value =
+                            ProfileUiState.Error(it.message ?: ErrorsMessage.gotApiCallError)
                     }
 
-                    is DataResult.Error -> {
-                        _profileState.value = profileState.value.copy(
-                            isLoading = false
-                        )
+                    is DataResult.Error -> _profileUiState.value =
+                        ProfileUiState.Error(it.message ?: ErrorsMessage.gotApiCallError)
 
-                        effects.send(
-                            BaseContract.Effect.Error(
-                                it.message ?: ErrorsMessage.gotApiCallError
-                            )
-                        )
-                    }
-
-                    is DataResult.Loading -> {
-                        if (!profileState.value.isLoading) {
-                            _profileState.value = profileState.value.copy(
-                                isLoading = true
-                            )
-                        }
-                    }
+                    is DataResult.Loading -> _profileUiState.value = ProfileUiState.Loading
                 }
             }
         }
@@ -104,36 +92,13 @@ class ProfileViewModel @Inject constructor(
             )
             updateImageUseCase.execute(file = multiparFile, profileId = userProfileId).collect {
                 when (it) {
-                    is DataResult.Success -> {
-                        _profileState.value = profileState.value.copy(
-                            userProfile = it.data,
-                            updateImage = CallSuccessModel(
-                                "Update Image Success",
-                                it.data?.profileId
-                            ),
-                            isLoading = false
-                        )
-                        effects.send(BaseContract.Effect.DataWasLoaded)
-                    }
+                    is DataResult.Success -> _profileUiState.value =
+                        ProfileUiState.UploadImageSuccess
 
-                    is DataResult.Error -> {
-                        _profileState.value = profileState.value.copy(
-                            isLoading = false
-                        )
-                        effects.send(
-                            BaseContract.Effect.Error(
-                                it.message ?: ErrorsMessage.gotApiCallError
-                            )
-                        )
-                    }
+                    is DataResult.Error -> _profileUiState.value =
+                        ProfileUiState.Error(it.message ?: ErrorsMessage.gotApiCallError)
 
-                    is DataResult.Loading -> {
-                        if (!profileState.value.isLoading) {
-                            _profileState.value = profileState.value.copy(
-                                isLoading = true
-                            )
-                        }
-                    }
+                    is DataResult.Loading -> _profileUiState.value = ProfileUiState.Loading
                 }
             }
         }
@@ -143,35 +108,12 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             userLogoutUseCase.execute().collect {
                 when (it) {
-                    is DataResult.Success -> {
-                        Log.i("Logout In VM Success>>>>", it.data.toString())
-                        _profileState.value = profileState.value.copy(
-                            isLogout = true,
-                            logoutSuccessMessage = it.data?.message?: "User Logout Success",
-                            isLoading = false
-                        )
-                        effects.send(BaseContract.Effect.DataWasLoaded)
-                    }
+                    is DataResult.Success -> _profileUiState.value = ProfileUiState.LogoutSuccess
 
-                    is DataResult.Error -> {
-                        _profileState.value = profileState.value.copy(
-                            isLoading = false
-                        )
+                    is DataResult.Error -> _profileUiState.value =
+                        ProfileUiState.Error(it.message ?: ErrorsMessage.gotApiCallError)
 
-                        effects.send(
-                            BaseContract.Effect.Error(
-                                it.message ?: ErrorsMessage.gotApiCallError
-                            )
-                        )
-                    }
-
-                    is DataResult.Loading -> {
-                        if (!profileState.value.isLoading) {
-                            _profileState.value = profileState.value.copy(
-                                isLoading = true
-                            )
-                        }
-                    }
+                    is DataResult.Loading -> _profileUiState.value = ProfileUiState.Loading
                 }
             }
         }
@@ -184,5 +126,12 @@ class ProfileViewModel @Inject constructor(
     fun setProfile(profile: Profile) {
         _profile.value = profile
     }
+}
 
+sealed interface ProfileUiState {
+    data object Loading : ProfileUiState
+    data class Error(val message: String) : ProfileUiState
+    data class LoadProfileSuccess(val profile: Profile?) : ProfileUiState
+    data object UploadImageSuccess : ProfileUiState
+    data object LogoutSuccess : ProfileUiState
 }

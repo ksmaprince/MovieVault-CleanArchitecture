@@ -24,22 +24,26 @@ class UserRepositoryImpl(
     private val userServiceHelper: UserServiceHelper
 ) : UserRepository {
     override suspend fun validateToken(): Flow<DataResult<CommonResponse>> =
-        flow<DataResult<CommonResponse>> {
+        flow {
             emit(DataResult.Loading())
             with(userServiceHelper.validateToken()) {
                 if (isSuccessful) {
                     emit(DataResult.Success(this.body()))
                 } else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                     clearCache()
                 }
@@ -55,10 +59,21 @@ class UserRepositoryImpl(
             with(userServiceHelper.registerUser(user)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    val error = Gson().fromJson(
-                        this.errorBody()?.charStream(), ResponseException::class.java
-                    )
-                    emit(DataResult.Error(error.ErrorMessage))
+                    try {
+                        val error = Gson().fromJson(
+                            this.errorBody()?.charStream(),
+                            ResponseException::class.java
+                        )
+                        emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
+                    }
                 }
             }
         }.catch {
@@ -79,10 +94,21 @@ class UserRepositoryImpl(
                     }
                     emit(DataResult.Success(this.body()))
                 } else {
-                    val error = Gson().fromJson(
-                        this.errorBody()?.charStream(), ResponseException::class.java
-                    )
-                    emit(DataResult.Error(error.ErrorMessage))
+                    try {
+                        val error = Gson().fromJson(
+                            this.errorBody()?.charStream(),
+                            ResponseException::class.java
+                        )
+                        emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
+                    }
                 }
             }
         }.catch {
@@ -97,16 +123,20 @@ class UserRepositoryImpl(
                     clearCache()
                     emit(DataResult.Success(this.body()))
                 } else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }

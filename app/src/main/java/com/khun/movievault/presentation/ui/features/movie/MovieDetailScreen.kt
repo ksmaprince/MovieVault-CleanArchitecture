@@ -14,52 +14,56 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khun.movievault.data.model.Movie
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.MovieDetailContract
 import com.khun.movievault.presentation.ui.components.AppTopAppBar
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
+import com.khun.movievault.utils.userProfileId
 
 @Composable
 fun MovieDetailScreen(
-    state: MovieDetailContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
+    detailViewModel: DetailViewModel = hiltViewModel(),
     movie: Movie,
-    navController: NavController,
-    onAddFavourite: (movieId: Long) -> Unit,
-    onFavouriteAdded: () -> Unit
+    popBack: () -> Unit
 ) {
     val context = LocalContext.current
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                showToastMessage(context, "Add Favourite Success")
-                onFavouriteAdded()
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
-        }
+    val detailUiState by detailViewModel.detailScreenUIState.collectAsStateWithLifecycle()
+    var isLoading by remember {
+        mutableStateOf(false)
     }
+    when (val currentState = detailUiState) {
+        is DetailScreenUIState.Loading -> isLoading = true
+        is DetailScreenUIState.Error -> {
+            isLoading = false
+            showToastMessage(context = context, message = currentState.message)
+        }
+
+        is DetailScreenUIState.FavouriteAdded -> {
+            isLoading = false
+            showToastMessage(context = context, "Favourite Added")
+        }
+
+        else -> isLoading = false
+    }
+
     Scaffold(
         topBar = {
             AppTopAppBar(
                 topAppBarText = movie.movieTitle,
-                onNavUp = {
-                    navController.popBackStack()
-                },
+                onNavUp = popBack
             )
         },
         content = { contentPadding ->
+            if (isLoading) ShowLoading()
             Column(
                 Modifier
                     .padding(contentPadding)
@@ -92,19 +96,16 @@ fun MovieDetailScreen(
 
                 TextButton(
                     onClick = {
-                        onAddFavourite(movie.movieId)
+                        detailViewModel.addFavourite(
+                            profileId = userProfileId,
+                            movieId = movie.movieId
+                        )
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(text = "Add To Favourite")
                 }
-
                 Spacer(modifier = Modifier.height(24.dp))
-                if (state.isLoading) {
-                    ShowLoadingDialog(message = "Adding data ...") {
-                        // Do Something
-                    }
-                }
             }
         }
     )

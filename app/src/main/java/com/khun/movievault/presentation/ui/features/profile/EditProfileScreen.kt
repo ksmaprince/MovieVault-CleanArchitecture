@@ -32,55 +32,53 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khun.movievault.R
 import com.khun.movievault.data.model.Profile
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.EditProfileContract
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun EditProfileScreen(
-    state: EditProfileContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
+    editProfileViewModel: EditProfileViewModel = hiltViewModel(),
     profile: Profile,
-    navController: NavController,
-    onSubmit: (Profile) -> Unit,
-    onProfileUpdated: () -> Unit
+    popBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                onProfileUpdated()
-                showToastMessage(context, "Profile updated successfully")
-                navController.popBackStack()
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
+    val editProfileUiState by editProfileViewModel.editProfileUiState.collectAsStateWithLifecycle()
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(editProfileUiState) {
+        if (editProfileUiState is EditProfileUiState.Done) {
+            showToastMessage(context = context, message = "Profile Updated")
+            popBack()
         }
     }
+    when (val currentState = editProfileUiState) {
+        is EditProfileUiState.Loading -> isLoading = true
+        is EditProfileUiState.Error -> {
+            isLoading = false
+            showToastMessage(context = context, message = currentState.message)
+        }
+
+        else -> isLoading = false
+    }
+
     Scaffold(topBar = {
         EditProfileTopAppBar(
             topAppBarText = stringResource(id = R.string.edit_profile),
-            onNavUp = {
-                navController.popBackStack()
-            },
+            onNavUp = popBack
         )
     }, content = { contentPadding ->
         Column(Modifier.padding(contentPadding)) {
-            EditProfileContent(profile = profile, onSubmit)
-        }
-        if (state.isLoading) {
-            ShowLoadingDialog(message = "Profile updating ...") {
-                // Do Something
+            EditProfileContent(profile = profile) {
+                editProfileViewModel.updateUserProfile(it)
             }
         }
+        if (isLoading) ShowLoading()
     })
 }
 

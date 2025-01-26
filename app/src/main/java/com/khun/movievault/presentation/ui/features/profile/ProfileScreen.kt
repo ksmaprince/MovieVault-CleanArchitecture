@@ -2,11 +2,12 @@ package com.khun.movievault.presentation.ui.features.profile
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
+import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -15,17 +16,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,47 +41,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.khun.movievault.R
 import com.khun.movievault.data.model.Profile
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.UserProfileContract
-import com.khun.movievault.presentation.ui.components.ShowDialog
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
 import com.khun.movievault.utils.userEmail
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 
-@OptIn(ExperimentalGlideComposeApi::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ProfileScreen(
-    state: UserProfileContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
-    onUploadImage: (file: File) -> Unit,
-    onNavigateToEditProfile: (profile: Profile?) -> Unit,
+    profileViewModel: ProfileViewModel,
+    onNavigateToEditProfile: () -> Unit,
     onNavigateToEditPassword: () -> Unit,
-    onLogoutSubmit: () -> Unit,
-    onLogoutSuccess:() -> Unit
+    onLogoutSuccess: () -> Unit
 ) {
     val context = LocalContext.current
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                Log.i("Data Loaded", "Profile")
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
-        }
-    }
+
     var imageUri: Uri? by remember {
         mutableStateOf(null)
     }
@@ -88,121 +73,155 @@ fun ProfileScreen(
             uri?.let {
                 imageUri = it
                 val file = fileFromContentUri(context, it)
-                onUploadImage(file)
+                profileViewModel.uploadeImage(file)
             }
         }
+    val profileUiState by profileViewModel.profileUiState.collectAsStateWithLifecycle()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .padding(15.dp)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-        ) {
-
-            GlideImage(
-                // model = if (profile.imageUrl != "") profile.imageUrl else "https://t3.ftcdn.net/jpg/05/16/27/58/360_F_516275801_f3Fsp17x6HQK0xQgDQEELoTuERO4SsWV.jpg",
-                model = state.userProfile?.imageUrl
-                    ?: "https://t3.ftcdn.net/jpg/05/16/27/58/360_F_516275801_f3Fsp17x6HQK0xQgDQEELoTuERO4SsWV.jpg",
-                modifier = Modifier
-                    .padding(16.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.Gray, CircleShape)
-                    .clickable {
-                        launcher.launch(PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly))
+        when (val currentState = profileUiState) {
+            is ProfileUiState.Loading -> ShowLoading()
+            is ProfileUiState.Error -> showToastMessage(context = context, currentState.message)
+            is ProfileUiState.UploadImageSuccess -> {
+                profileViewModel.getUserProfile()
+            }
+            is ProfileUiState.LogoutSuccess -> onLogoutSuccess()
+            is ProfileUiState.LoadProfileSuccess -> {
+                ProfileScreenItem(
+                    userProfile = currentState.profile,
+                    onNavigateToEditProfile = {
+                        it?.let {
+                            profileViewModel.setProfile(it)
+                            onNavigateToEditProfile()
+                        }
                     },
-                contentScale = ContentScale.Crop,
-                contentDescription = "Image"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = state.userProfile?.fullName ?: "",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .padding(top = 24.dp)
-                    .fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = state.userProfile?.contactNo ?: "",
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .padding(top = 24.dp)
-                    .fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = userEmail.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .padding(top = 24.dp)
-                    .fillMaxWidth()
-            )
-
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            TextButton(
-                onClick = {
-                    onNavigateToEditProfile(state.userProfile)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = stringResource(R.string.edit_profile))
-            }
-
-            TextButton(
-                onClick = {
-                    onNavigateToEditPassword()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = stringResource(R.string.change_password))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    onLogoutSubmit()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                enabled = true
-            ) {
-                Text(
-                    text = stringResource(R.string.logout),
+                    onNavigateToEditPassword = onNavigateToEditPassword,
+                    onLogoutSubmit = {
+                        profileViewModel.logoutCurrentUser()
+                    },
+                    pickImage = {
+                        launcher.launch(PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
                 )
             }
-
-        }
-    }
-    if (state.isLoading) {
-        ShowLoadingDialog(message = "Loading profile ...") {
-            // Do Something
-        }
-    }
-    if (state.isLogout){
-        ShowDialog(title ="Logout", message=state.logoutSuccessMessage){
-            onLogoutSuccess()
         }
     }
 
+}
+
+@Composable
+private fun ProfileScreenItem(
+    userProfile: Profile?,
+    onNavigateToEditProfile: (profile: Profile?) -> Unit,
+    onNavigateToEditPassword: () -> Unit,
+    onLogoutSubmit: () -> Unit,
+    pickImage: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .padding(15.dp)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+
+        SubcomposeAsyncImage(
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.CenterHorizontally)
+                .size(120.dp)
+                .clip(CircleShape)
+                .border(2.dp, Color.Gray, CircleShape)
+                .clickable {
+                    pickImage()
+                },
+            model = ImageRequest.Builder(LocalContext.current)
+                .crossfade(true)
+                .data(
+                    userProfile?.imageUrl
+                        ?: "https://t3.ftcdn.net/jpg/05/16/27/58/360_F_516275801_f3Fsp17x6HQK0xQgDQEELoTuERO4SsWV.jpg"
+                )
+                .build(),
+            loading = {
+                CircularProgressIndicator(modifier = Modifier.requiredSize(24.dp))
+            },
+            contentDescription = userProfile?.fullName ?: "NAME",
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = userProfile?.fullName ?: "NAME",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = userProfile?.contactNo ?: "",
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = userEmail,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .fillMaxWidth()
+        )
+
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        TextButton(
+            onClick = {
+                onNavigateToEditProfile(userProfile)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = stringResource(R.string.edit_profile))
+        }
+
+        TextButton(
+            onClick = {
+                onNavigateToEditPassword()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = stringResource(R.string.change_password))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                onLogoutSubmit()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            enabled = true
+        ) {
+            Text(
+                text = stringResource(R.string.logout),
+            )
+        }
+
+    }
 }
 
 fun uriToFile(context: Context, uri: Uri): File {

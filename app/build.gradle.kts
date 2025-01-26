@@ -27,7 +27,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "BASE_URL", sitProps.getProperty("baseUrl"))
+        buildConfigField("String", "BASE_URL", sitProps.getProperty("BASE_URL"))
     }
 
     buildTypes {
@@ -79,8 +79,8 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.android.compiler)
 
-    //Glide Compose
-    implementation(libs.compose)
+    //Coil Compose
+    implementation(libs.coil.compose)
     
     //Youtube Player
     implementation(libs.chromecast.sender)

@@ -1,6 +1,5 @@
 package com.khun.movievault.presentation.ui.features.favourites
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,20 +8,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,54 +31,55 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.khun.movievault.R
 import com.khun.movievault.data.model.Movie
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.FavouriteMovieContract
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.domain.mappers.Movies
+import com.khun.movievault.domain.mappers.toMovieUrl
 import com.khun.movievault.presentation.ui.components.showToastMessage
 import com.khun.movievault.presentation.ui.features.movie.YoutubePlayer
-import com.khun.movievault.presentation.ui.components.nav.BottomNavigationBar
-import com.khun.movievault.presentation.ui.features.login.Logo
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun FavouriteMoviesScreen(
-    state: FavouriteMovieContract.State,
-    effectFlow: Flow<BaseContract.Effect>,
-    navController: NavController
+    favouriteMovieViewModel: FavouriteMovieViewModel = hiltViewModel()
 ) {
 
+    val favouriteScreenUIState by favouriteMovieViewModel.favouriteScreenUIState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+    var movies by remember {
+        mutableStateOf<Movies>(listOf())
+    }
 
-    LaunchedEffect(effectFlow) {
-        effectFlow.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-//                showToastMessage(context, "Data loaded")
-                Log.i("Data Loaded", "Favourite")
-            }
-        }.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
+    when (val currentState = favouriteScreenUIState) {
+        is FavouriteScreenUIState.Loading -> isLoading = true
+        is FavouriteScreenUIState.Error -> {
+            isLoading = false
+            showToastMessage(context = context, message = currentState.message)
+        }
+
+        is FavouriteScreenUIState.Ready -> {
+            isLoading = false
+            movies = currentState.movies
         }
     }
-//    if (state.isLoading) {
-//        ShowLoadingDialog(message = "Fetching data ...") {
-//
-//        }
-//    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(15.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(15.dp)
+        ) {
             LazyColumn {
-                items(state.favouriteMovies) {
+                items(movies) {
                     MovieItem(it)
                 }
             }
@@ -90,7 +88,6 @@ fun FavouriteMoviesScreen(
 
 }
 
-@OptIn(ExperimentalGlideComposeApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MovieItem(movie: Movie) {
     var showYouTube by remember {
@@ -139,14 +136,21 @@ fun MovieItem(movie: Movie) {
                     .fillMaxWidth()
                     .padding(4.dp)
             ) {
-                GlideImage(
-                    model = "https://image.tmdb.org/t/p/w500${movie.poster}",
-                    contentDescription = "PosterPath",
-                    Modifier
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .crossfade(true)
+                        .data(movie.poster.toMovieUrl())
+                        .build(),
+                    loading = {
+                        CircularProgressIndicator(modifier = Modifier.requiredSize(24.dp))
+                    },
+                    modifier = Modifier
                         .size(100.dp)
                         .padding(10.dp),
+                    contentDescription = movie.movieTitle,
                     contentScale = ContentScale.Crop
                 )
+
                 Column(
                     modifier = Modifier.padding(10.dp),
                     verticalArrangement = Arrangement.Center

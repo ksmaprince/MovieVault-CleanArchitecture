@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.flow
 
 class GetAllFavouriteMovieUseCaseImpl(private val profileRepository: ProfileRepository) :
     GetAllFavouriteMovieUseCase {
-    override suspend fun execute(profileId: Long): Flow<DataResult<List<Movie>>> =
-        flow<DataResult<List<Movie>>> {
+    override fun execute(profileId: Long): Flow<DataResult<List<Movie>>> =
+        flow {
             profileRepository.getAllFavouriteMovie(profileId).collect {
                 when (it) {
                     is DataResult.Success -> {

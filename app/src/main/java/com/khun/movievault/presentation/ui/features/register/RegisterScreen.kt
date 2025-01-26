@@ -25,15 +25,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khun.movievault.R
 import com.khun.movievault.data.model.Profile
-import com.khun.movievault.data.model.RegisterUserResponse
 import com.khun.movievault.data.model.User
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.RegisterUserContract
 import com.khun.movievault.presentation.ui.components.AppTopAppBar
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
 import com.khun.movievault.presentation.ui.features.login.ConfirmPasswordState
 import com.khun.movievault.presentation.ui.features.login.Email
@@ -44,28 +42,32 @@ import com.khun.movievault.presentation.ui.theme.stronglyDeemphasizedAlpha
 import com.khun.movievault.utils.ROLE_USER
 import com.khun.movievault.utils.SecretKey
 import com.khun.movievault.utils.encryptPassword
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun RegisterScreen(
-    state: RegisterUserContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
-    navController: NavController,
-    registerSubmit: (user: User) -> Unit,
+    registerViewModel: RegisterViewModel = hiltViewModel(),
+    popBack: () -> Unit
 ) {
     val context = LocalContext.current
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                showToastMessage(context, "Register User Success.")
-                navController.popBackStack()
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
+    val registerUserState by registerViewModel.registerUserState.collectAsStateWithLifecycle()
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(registerUserState) {
+        if (registerUserState is RegisterScreenUIState.RegisterSuccess) {
+            showToastMessage(context, "Register User Success.")
+            popBack()
         }
+    }
+
+    when (val currentState = registerUserState) {
+        is RegisterScreenUIState.Loading -> isLoading = true
+        is RegisterScreenUIState.Error -> {
+            isLoading = false
+            showToastMessage(context = context, message = currentState.message)
+        }
+        else -> isLoading = false
+
     }
 
     Scaffold(
@@ -73,14 +75,17 @@ fun RegisterScreen(
             AppTopAppBar(
                 topAppBarText = stringResource(id = R.string.create_account),
                 onNavUp = {
-                    navController.popBackStack()
+                    popBack()
                 },
             )
         },
         content = { contentPadding ->
             Column(Modifier.padding(contentPadding)) {
-                RegisterContent(state, registerSubmit)
+                RegisterContent { user ->
+                    registerViewModel.registerUser(user = user)
+                }
             }
+            if (isLoading) ShowLoading()
         }
     )
 
@@ -88,7 +93,6 @@ fun RegisterScreen(
 
 @Composable
 fun RegisterContent(
-    state: RegisterUserContract.State,
     registerSubmit: (user: User) -> Unit
 ) {
     Column(
@@ -108,34 +112,11 @@ fun RegisterContent(
         val passwordState = remember { PasswordState() }
         val confirmPasswordState = remember { ConfirmPasswordState(passwordState = passwordState) }
 
-        var title by remember {
-            mutableStateOf("")
-        }
-        var message by remember {
-            mutableStateOf("")
-        }
-        var isShowLoading by remember {
-            mutableStateOf(false)
-        }
-        var showSuccessDialog by remember { mutableStateOf(false) }
-        var showErrorDialog by remember { mutableStateOf(false) }
-
-        var user = remember {
-            RegisterUserResponse()
-        }
-
-
         val onSubmit = {
             val profile = Profile(0, fullName, contactNo, "")
             val email = emailState.text
             val password = encryptPassword(SecretKey, passwordState.text)
             registerSubmit(User(0, email, password, profile, ROLE_USER))
-        }
-
-        if (state.isLoading) {
-            ShowLoadingDialog(message = "") {
-                isShowLoading = false
-            }
         }
 
         OutlinedTextField(

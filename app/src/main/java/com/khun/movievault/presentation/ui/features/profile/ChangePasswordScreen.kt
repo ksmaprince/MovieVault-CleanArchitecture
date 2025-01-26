@@ -10,7 +10,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -18,47 +21,52 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khun.movievault.R
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.EditProfileContract
-import com.khun.movievault.presentation.ui.components.ShowLoadingDialog
+import com.khun.movievault.presentation.ui.components.ShowLoading
 import com.khun.movievault.presentation.ui.components.showToastMessage
 import com.khun.movievault.presentation.ui.features.login.ConfirmPasswordState
 import com.khun.movievault.presentation.ui.features.login.Password
 import com.khun.movievault.presentation.ui.features.login.PasswordState
 import com.khun.movievault.utils.SecretKey
 import com.khun.movievault.utils.encryptPassword
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun ChangePasswordScreen(
-    state: EditProfileContract.State,
-    effectFlow: Flow<BaseContract.Effect>?,
-    navController: NavController,
-    onSubmit: (currentPassword: String, newPassword: String) -> Unit,
-    onChangePasswordSuccess: () -> Unit
+    changePasswordViewModel: ChangePasswordViewModel = hiltViewModel(),
+    popBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    LaunchedEffect(effectFlow) {
-        effectFlow?.onEach {
-            if (it is BaseContract.Effect.DataWasLoaded) {
-                showToastMessage(context, "Change Password Success, Please login again")
-                onChangePasswordSuccess()
-            }
-        }?.collect {
-            if (it is BaseContract.Effect.Error) {
-                showToastMessage(context, it.errorMessage)
-            }
+    val changePasswordUiState by changePasswordViewModel.changePasswordUiState.collectAsStateWithLifecycle()
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(changePasswordUiState) {
+        if (changePasswordUiState is ChangePasswordUiState.Done) {
+            isLoading = false
+            showToastMessage(context = context, "Change Password Success")
+            popBack()
         }
     }
+    when (val currentSate = changePasswordUiState) {
+        is ChangePasswordUiState.Loading -> {
+            isLoading = true
+        }
+
+        is ChangePasswordUiState.Error -> {
+            isLoading = false
+            showToastMessage(context = context, currentSate.message)
+        }
+
+        else -> isLoading = false
+    }
+
     Scaffold(topBar = {
         EditProfileTopAppBar(
             topAppBarText = stringResource(id = R.string.change_password),
-            onNavUp = {
-                navController.popBackStack()
-            },
+            onNavUp = popBack,
         )
     }, content = { contentPadding ->
         Column(Modifier.padding(contentPadding)) {
@@ -75,9 +83,8 @@ fun ChangePasswordScreen(
             val submit = {
                 val currentPassword = encryptPassword(SecretKey, currentPasswordState.text)
                 val newPassword = encryptPassword(SecretKey, passwordState.text)
-                onSubmit(currentPassword, newPassword)
+                changePasswordViewModel.changePassword(currentPassword, newPassword)
             }
-
 
             Password(
                 label = stringResource(R.string.current_password),
@@ -88,7 +95,6 @@ fun ChangePasswordScreen(
                     .focusRequester(passwordFocusRequest)
                     .padding(10.dp)
             )
-
 
             Password(
                 label = stringResource(R.string.new_password),
@@ -125,11 +131,8 @@ fun ChangePasswordScreen(
                 Text(text = stringResource(R.string.change_password))
             }
 
-            if (state.isLoading) {
-                ShowLoadingDialog(message = "Password Changing ...") {
-                    // Do Something
-                }
-            }
+            if (isLoading) ShowLoading()
         }
     })
+
 }

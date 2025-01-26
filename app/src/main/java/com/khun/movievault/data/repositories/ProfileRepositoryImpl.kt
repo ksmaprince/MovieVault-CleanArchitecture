@@ -1,12 +1,12 @@
 package com.khun.movievault.data.repositories
 
 import com.google.gson.Gson
+import com.khun.movievault.data.DataResult
 import com.khun.movievault.data.model.Movie
 import com.khun.movievault.data.model.Profile
 import com.khun.movievault.data.model.ResponseException
 import com.khun.movievault.data.model.UpdatePasswordRequest
 import com.khun.movievault.data.model.UpdatePasswordResponse
-import com.khun.movievault.data.DataResult
 import com.khun.movievault.data.remote.helpers.ProfileServiceHelper
 import com.khun.movievault.domain.repositories.ProfileRepository
 import com.khun.movievault.utils.ErrorsMessage
@@ -23,16 +23,20 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             with(profileServiceHelper.getProfileById(profileId = profileId)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
@@ -49,16 +53,20 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             with(profileServiceHelper.addFavouriteMovie(profileId, movieId)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
@@ -72,16 +80,20 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             with(profileServiceHelper.getAllFavouriteMovies(profileId = profileId)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
@@ -95,16 +107,20 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             with(profileServiceHelper.updateProfileById(profile.profileId, profile)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
@@ -118,16 +134,20 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             with(profileServiceHelper.changePassword(passwordRequest)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
@@ -144,16 +164,20 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             with(profileServiceHelper.updateProfileImage(file, profileId)) {
                 if (isSuccessful) emit(DataResult.Success(this.body()))
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
@@ -161,3 +185,4 @@ class ProfileRepositoryImpl(private val profileServiceHelper: ProfileServiceHelp
             emit(DataResult.Error(it.localizedMessage))
         }
 }
+

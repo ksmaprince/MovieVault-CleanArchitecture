@@ -4,81 +4,49 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.khun.movievault.data.model.Movie
 import com.khun.movievault.data.DataResult
+import com.khun.movievault.data.model.Movie
+import com.khun.movievault.domain.mappers.Movies
 import com.khun.movievault.domain.usecases.GetAllMoviesUseCase
-import com.khun.movievault.presentation.contracts.BaseContract
-import com.khun.movievault.presentation.contracts.MovieContract
-import com.khun.movievault.utils.ErrorsMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
-class MovieViewModel @Inject constructor(private val getAllMoviesUseCase: GetAllMoviesUseCase) :
+class MovieViewModel @Inject constructor(getAllMoviesUseCase: GetAllMoviesUseCase) :
     ViewModel() {
-
-    private val _movieState = MutableStateFlow(
-        MovieContract.State(
-            movies = listOf(),
-            isLoading = false,
-        )
-    )
-    val movieState: StateFlow<MovieContract.State> get() = _movieState
-    var effects = Channel<BaseContract.Effect>(Channel.UNLIMITED)
-
-    init {
-        fetchAllMovie()
-    }
-
-    private fun fetchAllMovie() {
-        viewModelScope.launch(Dispatchers.IO) {
-            getAllMoviesUseCase.execute().collect {
-                when (it) {
-                    is DataResult.Success -> {
-                        _movieState.value = movieState.value.copy(
-                            movies = it.data ?: listOf(),
-                            isLoading = false
-                        )
-                        effects.send(BaseContract.Effect.DataWasLoaded)
-                    }
-
-                    is DataResult.Error -> {
-                        _movieState.value = movieState.value.copy(
-                            isLoading = false
-                        )
-                        effects.send(
-                            BaseContract.Effect.Error(
-                                it.message ?: ErrorsMessage.gotApiCallError
-                            )
-                        )
-                    }
-
-                    is DataResult.Loading -> {
-                        if (!movieState.value.isLoading) {
-                            _movieState.value = movieState.value.copy(
-                                isLoading = true
-                            )
-                        }
-                    }
+    val homeScreenUISate = getAllMoviesUseCase.execute().map {
+        when (it) {
+            is DataResult.Loading -> HomeScreenUISate.Loading
+            is DataResult.Success -> {
+                if (!it.data.isNullOrEmpty()) {
+                    HomeScreenUISate.Ready(it.data)
+                } else {
+                    HomeScreenUISate.Error("No Data From Server")
                 }
             }
+
+            is DataResult.Error -> {
+
+            }
         }
-    }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = HomeScreenUISate.Loading
+    )
 
-    private val _movie = MutableLiveData<Movie>()
-    val movie: LiveData<Movie>
-        get() = _movie
-
+    var movie : Movie? = null
     fun setMovieInfo(movie: Movie) {
-        _movie.value = movie
+       this.movie = movie
     }
 
-//    fun setMovieStateEmpty() {
-//        _movieState.value = MovieState.Empty
-//    }
+}
+
+sealed interface HomeScreenUISate {
+    data object Loading : HomeScreenUISate
+    data class Ready(val movies: Movies) : HomeScreenUISate
+    data class Error(val message: String) : HomeScreenUISate
 }

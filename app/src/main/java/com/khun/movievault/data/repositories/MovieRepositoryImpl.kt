@@ -22,16 +22,20 @@ class MovieRepositoryImpl(private val movieServiceHelper: MovieServiceHelper) : 
                     emit(DataResult.Success(this.body()))
                 }
                 else {
-                    if (this.code() in 400..499) {
-                        emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
-                    } else if (this.code() in 500..599) {
-                        emit(DataResult.Error(ErrorsMessage.serverError))
-                    } else {
+                    try {
                         val error = Gson().fromJson(
                             this.errorBody()?.charStream(),
                             ResponseException::class.java
                         )
                         emit(DataResult.Error(error.ErrorMessage))
+                    } catch (e: Exception) {
+                        if (this.code() in 400..499) {
+                            emit(DataResult.Error(ErrorsMessage.sessionExpiredError))
+                        } else if (this.code() in 500..599) {
+                            emit(DataResult.Error(ErrorsMessage.serverError))
+                        }else{
+                            emit(DataResult.Error(e.localizedMessage))
+                        }
                     }
                 }
             }
